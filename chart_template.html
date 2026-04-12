@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Line Age</title>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<style>
+  html, body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+  }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    padding: 24px;
+    box-sizing: border-box;
+    background: #fff;
+    color: #333;
+  }
+  #chart {
+    width: 100%;
+    height: calc(100vh - 48px);
+  }
+  #chart svg {
+    width: 100%;
+    height: 100%;
+  }
+  .bar-segment { cursor: default; }
+  .bar-segment:hover { filter: brightness(1.18); }
+  .axis text { font-size: 11px; fill: #666; }
+  .axis line, .axis path { stroke: #ddd; }
+  .grid line { stroke: #f2f2f2; }
+  .grid path { stroke: none; }
+  #tooltip {
+    position: fixed;
+    background: rgba(20, 20, 20, 0.88);
+    color: #fff;
+    padding: 9px 13px;
+    border-radius: 7px;
+    font-size: 12.5px;
+    line-height: 1.6;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.08s;
+    max-width: 420px;
+    word-break: break-all;
+  }
+</style>
+</head>
+<body>
+<div id="tooltip"></div>
+<div id="chart"></div>
+<script>
+const payload = __PAYLOAD__;
+const months = payload.months;
+
+document.title = `Line Age — ${payload.repo}`;
+
+const palette = [
+  "#4e79a7", "#f28e2b", "#e15759", "#76b7b2", "#59a14f",
+  "#edc948", "#b07aa1", "#ff9da7", "#9c755f", "#bab0ac",
+  "#17becf", "#aec7e8", "#ffbb78", "#98df8a", "#ff9896",
+  "#c5b0d5", "#c49c94", "#f7b6d2", "#dbdb8d", "#9edae5",
+  "#393b79", "#637939", "#8c6d31", "#843c39", "#7b4173",
+  "#5254a3", "#8ca252", "#bd9e39", "#ad494a", "#a55194",
+];
+
+const fileColor = {};
+payload.files.forEach((file, index) => {
+  fileColor[file] = palette[index % palette.length];
+});
+
+const container = document.getElementById("chart");
+const margin = { top: 24, right: 24, bottom: 72, left: 64 };
+const width = container.clientWidth;
+const height = container.clientHeight;
+const innerWidth = width - margin.left - margin.right;
+const innerHeight = height - margin.top - margin.bottom;
+
+const svg = d3.select("#chart").append("svg")
+  .attr("width", width)
+  .attr("height", height)
+  .append("g")
+  .attr("transform", `translate(${margin.left},${margin.top})`);
+
+const x = d3.scaleBand()
+  .domain(months.map(d => d.month))
+  .range([0, innerWidth])
+  .padding(0.18);
+
+const maxTotal = d3.max(months, d => d.total);
+const y = d3.scaleLinear()
+  .domain([0, maxTotal * 1.04])
+  .range([innerHeight, 0]);
+
+svg.append("g").attr("class", "grid")
+  .call(d3.axisLeft(y).tickSize(-innerWidth).tickFormat("").ticks(8));
+
+svg.append("g").attr("class", "axis")
+  .attr("transform", `translate(0,${innerHeight})`)
+  .call(d3.axisBottom(x))
+  .selectAll("text")
+    .attr("transform", "rotate(-40)")
+    .style("text-anchor", "end")
+    .attr("dx", "-0.4em")
+    .attr("dy", "0.6em");
+
+svg.append("g").attr("class", "axis")
+  .call(d3.axisLeft(y).ticks(8).tickFormat(d => d.toLocaleString()));
+
+svg.append("text")
+  .attr("transform", "rotate(-90)")
+  .attr("x", -innerHeight / 2).attr("y", -50)
+  .attr("text-anchor", "middle")
+  .attr("font-size", "12px").attr("fill", "#666")
+  .text("Lines");
+
+svg.append("text")
+  .attr("x", innerWidth / 2).attr("y", -6)
+  .attr("text-anchor", "middle")
+  .attr("font-size", "14px").attr("font-weight", "500").attr("fill", "#333")
+  .text(`Lines by Last Modified Month — ${payload.repo}`);
+
+const tooltip = d3.select("#tooltip");
+
+months.forEach(monthDatum => {
+  let yBottom = innerHeight;
+  monthDatum.segments.forEach(seg => {
+    const segHeight = innerHeight - y(seg.count);
+    if (segHeight < 0.5) return;
+    yBottom -= segHeight;
+    const pct = (seg.count / monthDatum.total * 100).toFixed(1);
+    svg.append("rect")
+      .attr("class", "bar-segment")
+      .attr("x", x(monthDatum.month))
+      .attr("y", yBottom)
+      .attr("width", x.bandwidth())
+      .attr("height", segHeight)
+      .attr("fill", fileColor[seg.file] ?? "#aaa")
+      .on("mouseover", () => {
+        tooltip.style("opacity", 1)
+          .html(`<strong>${seg.file}</strong><br>${monthDatum.month}: ${seg.count.toLocaleString()} lines (${pct}% of month)`);
+      })
+      .on("mousemove", event => {
+        const pad = 14;
+        const ttWidth = 300;
+        const left = event.clientX + pad + ttWidth > window.innerWidth
+          ? event.clientX - ttWidth - pad
+          : event.clientX + pad;
+        tooltip.style("left", left + "px").style("top", (event.clientY - 36) + "px");
+      })
+      .on("mouseout", () => tooltip.style("opacity", 0));
+  });
+
+  const barTop = y(monthDatum.total);
+  svg.append("text")
+    .attr("x", x(monthDatum.month) + x.bandwidth() / 2)
+    .attr("y", barTop - 10)
+    .attr("text-anchor", "middle")
+    .attr("font-size", "13px")
+    .attr("font-weight", "600")
+    .attr("fill", "#444")
+    .text(`files: ${monthDatum.segments.length}`);
+});
+</script>
+</body>
+</html>

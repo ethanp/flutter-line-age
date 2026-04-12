@@ -1,0 +1,9 @@
+[project]
+name = "flutter-line-age"
+version = "0.1.0"
+description = "Analyze Flutter/Dart repos by line age using git blame"
+requires-python = ">=3.10"
+dependencies = []
+
+[project.scripts]
+flutter-line-age = "flutter_line_age:main"
