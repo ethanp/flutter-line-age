@@ -1,5 +1,8 @@
 # flutter-line-age
 
+> **Deprecated.** Line age now lives in **Ethan Workbench** (Mac companion →
+> project row → Line age). Prefer that Flutter UI over this Python CLI.
+
 Analyzes a Flutter/Dart repo's source code by the month each line was last touched, using `git blame`. Renders an interactive stacked bar chart where each bar represents a month and each colored segment is a file — sorted largest-at-bottom within each bar.
 
 ![Screenshot of flutter-line-age run on the health_notes app](screenshot.png)
